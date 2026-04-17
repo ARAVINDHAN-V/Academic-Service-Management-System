@@ -1,64 +1,83 @@
-import { useEffect } from "react";
-import * as React from 'react';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom';
+
 import { getClassStudents } from "../../redux/sclassRelated/sclassHandle";
-import { Paper, Box, Typography, ButtonGroup, Button, Popper, Grow, ClickAwayListener, MenuList, MenuItem } from '@mui/material';
-import { BlackButton, BlueButton} from "../../components/buttonStyles";
+
+import {
+    Paper, Box, Typography, ButtonGroup, Button,
+    Popper, Grow, ClickAwayListener, MenuList, MenuItem,
+    Collapse, IconButton
+} from '@mui/material';
+
+import {
+    KeyboardArrowDown, KeyboardArrowUp
+} from "@mui/icons-material";
+
+import CloseIcon from '@mui/icons-material/Close';
+
+import { BlackButton, BlueButton } from "../../components/buttonStyles";
 import TableTemplate from "../../components/TableTemplate";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 
 const TeacherClassDetails = () => {
-    const navigate = useNavigate()
+
+    const navigate = useNavigate();
     const dispatch = useDispatch();
+
     const { sclassStudents, loading, error, getresponse } = useSelector((state) => state.sclass);
-
     const { currentUser } = useSelector((state) => state.user);
-    const classID = currentUser.teachSclass?._id
-    const subjectID = currentUser.teachSubject?._id
 
+    const classID = currentUser.teachSclass?._id;
+    const subjectID = currentUser.teachSubject?._id;
+
+    // ✅ Attendance Risk State
+    const [riskStudents, setRiskStudents] = useState([]);
+    const [showAlert, setShowAlert] = useState(true);
+
+    // ✅ Fetch class students
     useEffect(() => {
         dispatch(getClassStudents(classID));
-    }, [dispatch, classID])
+    }, [dispatch, classID]);
+
+    // ✅ Fetch attendance risk students
+    useEffect(() => {
+        axios.get("http://localhost:5000/attendance-risk")
+            .then(res => {console.log("API DATA:", res.data);  
+                setRiskStudents(res.data);})
+            .catch(err => console.log(err));
+    }, []);
 
     if (error) {
-        console.log(error)
+        console.log(error);
     }
 
     const studentColumns = [
         { id: 'name', label: 'Name', minWidth: 170 },
         { id: 'rollNum', label: 'Roll Number', minWidth: 100 },
-    ]
+    ];
 
-    const studentRows = sclassStudents.map((student) => {
-        return {
-            name: student.name,
-            rollNum: student.rollNum,
-            id: student._id,
-        };
-    })
+    const studentRows = sclassStudents.map((student) => ({
+        name: student.name,
+        rollNum: student.rollNum,
+        id: student._id,
+    }));
 
+    // ✅ Action buttons per student
     const StudentsButtonHaver = ({ row }) => {
-        const options = ['Take Attendance', 'Provide Marks'];
 
-        const [open, setOpen] = React.useState(false);
+        const options = ['Take Attendance', 'Provide Marks'];
+        const [open, setOpen] = useState(false);
         const anchorRef = React.useRef(null);
-        const [selectedIndex, setSelectedIndex] = React.useState(0);
+        const [selectedIndex, setSelectedIndex] = useState(0);
 
         const handleClick = () => {
-            console.info(`You clicked ${options[selectedIndex]}`);
             if (selectedIndex === 0) {
-                handleAttendance();
-            } else if (selectedIndex === 1) {
-                handleMarks();
+                navigate(`/Teacher/class/student/attendance/${row.id}/${subjectID}`);
+            } else {
+                navigate(`/Teacher/class/student/marks/${row.id}/${subjectID}`);
             }
-        };
-
-        const handleAttendance = () => {
-            navigate(`/Teacher/class/student/attendance/${row.id}/${subjectID}`)
-        }
-        const handleMarks = () => {
-            navigate(`/Teacher/class/student/marks/${row.id}/${subjectID}`)
         };
 
         const handleMenuItemClick = (event, index) => {
@@ -66,80 +85,47 @@ const TeacherClassDetails = () => {
             setOpen(false);
         };
 
-        const handleToggle = () => {
-            setOpen((prevOpen) => !prevOpen);
-        };
-
-        const handleClose = (event) => {
-            if (anchorRef.current && anchorRef.current.contains(event.target)) {
-                return;
-            }
-
-            setOpen(false);
-        };
         return (
             <>
                 <BlueButton
                     variant="contained"
-                    onClick={() =>
-                        navigate("/Teacher/class/student/" + row.id)
-                    }
-                    sx={{ mr: 1 }} 
+                    onClick={() => navigate("/Teacher/class/student/" + row.id)}
+                    sx={{ mr: 1 }}
                 >
                     View
                 </BlueButton>
-                <React.Fragment>
-                    <ButtonGroup variant="contained" ref={anchorRef} aria-label="split button">
-                        <Button onClick={handleClick}>{options[selectedIndex]}</Button>
-                        <BlackButton
-                            size="small"
-                            aria-controls={open ? 'split-button-menu' : undefined}
-                            aria-expanded={open ? 'true' : undefined}
-                            aria-label="select merge strategy"
-                            aria-haspopup="menu"
-                            onClick={handleToggle}
-                        >
-                            {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                        </BlackButton>
-                    </ButtonGroup>
-                    <Popper
-                        sx={{
-                            zIndex: 1,
-                        }}
-                        open={open}
-                        anchorEl={anchorRef.current}
-                        role={undefined}
-                        transition
-                        disablePortal
-                    >
-                        {({ TransitionProps, placement }) => (
-                            <Grow
-                                {...TransitionProps}
-                                style={{
-                                    transformOrigin:
-                                        placement === 'bottom' ? 'center top' : 'center bottom',
-                                }}
-                            >
-                                <Paper>
-                                    <ClickAwayListener onClickAway={handleClose}>
-                                        <MenuList id="split-button-menu" autoFocusItem>
-                                            {options.map((option, index) => (
-                                                <MenuItem
-                                                    key={option}
-                                                    disabled={index === 2}
-                                                    selected={index === selectedIndex}
-                                                    onClick={(event) => handleMenuItemClick(event, index)}
-                                                >
-                                                    {option}
-                                                </MenuItem>
-                                            ))}
-                                        </MenuList>
-                                    </ClickAwayListener>
-                                </Paper>
-                            </Grow>
-                        )}
-                    </Popper>
-                </React.Fragment>
+
+                <ButtonGroup variant="contained" ref={anchorRef}>
+                    <Button onClick={handleClick}>
+                        {options[selectedIndex]}
+                    </Button>
+
+                    <BlackButton onClick={() => setOpen(!open)}>
+                        {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                    </BlackButton>
+                </ButtonGroup>
+
+                <Popper open={open} anchorEl={anchorRef.current} transition>
+                    {({ TransitionProps }) => (
+                        <Grow {...TransitionProps}>
+                            <Paper>
+                                <ClickAwayListener onClickAway={() => setOpen(false)}>
+                                    <MenuList>
+                                        {options.map((option, index) => (
+                                            <MenuItem
+                                                key={option}
+                                                selected={index === selectedIndex}
+                                                onClick={(event) => handleMenuItemClick(event, index)}
+                                            >
+                                                {option}
+                                            </MenuItem>
+                                        ))}
+                                    </MenuList>
+                                </ClickAwayListener>
+                            </Paper>
+                        </Grow>
+                    )}
+                </Popper>
             </>
         );
     };
@@ -153,21 +139,47 @@ const TeacherClassDetails = () => {
                     <Typography variant="h4" align="center" gutterBottom>
                         Class Details
                     </Typography>
+
+                    {/* ✅ Attendance Risk Alert */}
+                    {riskStudents.length > 0 && (
+                        <Collapse in={showAlert}>
+                            <Paper sx={{ p: 2, mb: 2, backgroundColor: '#fff3cd' }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="center">
+                                    <Typography fontWeight="bold">
+                                        ⚠ Attendance Risk Alerts — {riskStudents.length} students
+                                    </Typography>
+
+                                    <IconButton onClick={() => setShowAlert(false)}>
+                                        <CloseIcon />
+                                    </IconButton>
+                                </Box>
+
+                                {riskStudents.map((student, i) => (
+                                    <Typography key={i} sx={{ mt: 1 }}>
+                                        <strong>{student.name}</strong> → {student.message}
+                                    </Typography>
+                                ))}
+                            </Paper>
+                        </Collapse>
+                    )}
+
                     {getresponse ? (
-                        <>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-                                No Students Found
-                            </Box>
-                        </>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            No Students Found
+                        </Box>
                     ) : (
-                        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+                        <Paper sx={{ width: '100%', overflow: 'hidden', p: 2 }}>
                             <Typography variant="h5" gutterBottom>
-                                Students List:
+                                Students List
                             </Typography>
 
-                            {Array.isArray(sclassStudents) && sclassStudents.length > 0 &&
-                                <TableTemplate buttonHaver={StudentsButtonHaver} columns={studentColumns} rows={studentRows} />
-                            }
+                            {Array.isArray(sclassStudents) && sclassStudents.length > 0 && (
+                                <TableTemplate
+                                    buttonHaver={StudentsButtonHaver}
+                                    columns={studentColumns}
+                                    rows={studentRows}
+                                />
+                            )}
                         </Paper>
                     )}
                 </>

@@ -28,17 +28,20 @@ const studentSchema = new mongoose.Schema({
         default: "Student"
     },
     examResult: [
-        {
-            subName: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'subject',
-            },
-            marksObtained: {
-                type: Number,
-                default: 0
-            }
-        }
-    ],
+  {
+    subName: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "subject"
+    },
+    marksObtained: Number,
+
+    suggestion: {
+      performance: String,
+      advice: String,
+      attendanceMsg: String
+    }
+  }
+],
     attendance: [{
         date: {
             type: Date,
@@ -54,7 +57,20 @@ const studentSchema = new mongoose.Schema({
             ref: 'subject',
             required: true
         }
-    }]
+    }],
+    notifications: [
+  {
+    message: String,
+    date: {
+      type: Date,
+      default: Date.now
+    },
+    read: {
+      type: Boolean,
+      default: false
+    }
+  }
+]
 });
 
 module.exports = mongoose.model("student", studentSchema);

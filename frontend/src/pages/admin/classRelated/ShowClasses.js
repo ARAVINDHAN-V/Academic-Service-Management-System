@@ -3,11 +3,11 @@ import { IconButton, Box, Menu, MenuItem, ListItemIcon, Tooltip } from '@mui/mat
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { deleteUser } from '../../../redux/userRelated/userHandle';
+// import { deleteUser } from '../../../redux/userRelated/userHandle';
 import { getAllSclasses } from '../../../redux/sclassRelated/sclassHandle';
 import { BlueButton, GreenButton } from '../../../components/buttonStyles';
 import TableTemplate from '../../../components/TableTemplate';
-
+import axios from "axios";
 import SpeedDialIcon from '@mui/material/SpeedDialIcon';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
@@ -36,16 +36,22 @@ const ShowClasses = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [message, setMessage] = useState("");
 
-  const deleteHandler = (deleteID, address) => {
-    console.log(deleteID);
-    console.log(address);
-    setMessage("Sorry the delete function has been disabled for now.")
-    setShowPopup(true)
-    // dispatch(deleteUser(deleteID, address))
-    //   .then(() => {
-    //     dispatch(getAllSclasses(adminID, "Sclass"));
-    //   })
-  }
+  const deleteHandler = async (deleteID, address) => {
+    try {
+        await axios.delete(`http://localhost:5000/${address}/${deleteID}`);
+
+        setMessage("✅ Deleted successfully");
+        setShowPopup(true);
+
+        // OPTIONAL: refresh page
+        window.location.reload();
+
+    } catch (error) {
+        console.log(error);
+        setMessage("❌ Delete failed");
+        setShowPopup(true);
+    }
+};
 
   const sclassColumns = [
     { id: 'name', label: 'Class Name', minWidth: 170 },
@@ -118,14 +124,17 @@ const ShowClasses = () => {
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          {actions.map((action) => (
-            <MenuItem onClick={action.action}>
-              <ListItemIcon fontSize="small">
-                {action.icon}
-              </ListItemIcon>
-              {action.name}
-            </MenuItem>
-          ))}
+          {actions.map((action, index) => (
+  <MenuItem
+    key={action.name || index}   // ✅ FIX
+    onClick={action.action}
+  >
+    <ListItemIcon>
+      {action.icon}
+    </ListItemIcon>
+    {action.name}
+  </MenuItem>
+))}
         </Menu>
       </>
     );

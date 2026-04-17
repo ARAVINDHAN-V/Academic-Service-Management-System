@@ -19,7 +19,7 @@ export const getAllStudents = (id) => async (dispatch) => {
             dispatch(getSuccess(result.data));
         }
     } catch (error) {
-        dispatch(getError(error));
+        dispatch(getError(error.response?.data || error.message));
     }
 }
 

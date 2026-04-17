@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from "react-router-dom";
 import { getAllStudents } from '../../../redux/studentRelated/studentHandle';
-import { deleteUser } from '../../../redux/userRelated/userHandle';
+// import { deleteUser } from '../../../redux/userRelated/userHandle';
+import axios from "axios";
 import {
     Paper, Box, IconButton
 } from '@mui/material';
@@ -42,17 +43,22 @@ const ShowStudents = () => {
     const [showPopup, setShowPopup] = React.useState(false);
     const [message, setMessage] = React.useState("");
 
-    const deleteHandler = (deleteID, address) => {
-        console.log(deleteID);
-        console.log(address);
-        setMessage("Sorry the delete function has been disabled for now.")
-        setShowPopup(true)
+    const deleteHandler = async (deleteID, address) => {
+    try {
+        await axios.delete(`http://localhost:5000/${address}/${deleteID}`);
 
-        // dispatch(deleteUser(deleteID, address))
-        //     .then(() => {
-        //         dispatch(getAllStudents(currentUser._id));
-        //     })
+        setMessage("✅ Deleted successfully");
+        setShowPopup(true);
+
+        // OPTIONAL: refresh page
+        window.location.reload();
+
+    } catch (error) {
+        console.log(error);
+        setMessage("❌ Delete failed");
+        setShowPopup(true);
     }
+};
 
     const studentColumns = [
         { id: 'name', label: 'Name', minWidth: 170 },
@@ -185,30 +191,41 @@ const ShowStudents = () => {
     ];
 
     return (
-        <>
-            {loading ?
-                <div>Loading...</div>
-                :
-                <>
-                    {response ?
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-                            <GreenButton variant="contained" onClick={() => navigate("/Admin/addstudents")}>
-                                Add Students
-                            </GreenButton>
-                        </Box>
-                        :
-                        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-                            {Array.isArray(studentsList) && studentsList.length > 0 &&
-                                <TableTemplate buttonHaver={StudentButtonHaver} columns={studentColumns} rows={studentRows} />
-                            }
-                            <SpeedDialTemplate actions={actions} />
-                        </Paper>
-                    }
-                </>
-            }
-            <Popup message={message} setShowPopup={setShowPopup} showPopup={showPopup} />
-        </>
-    );
+    <>
+        {loading ? (
+            <div style={{ textAlign: "center", marginTop: "50px" }}>
+                Loading...
+            </div>
+        ) : (
+            <>
+                {Array.isArray(studentsList) && studentsList.length === 0 ? (
+                    <Box sx={{ textAlign: "center", mt: 10 }}>
+                        <h2>👨‍🎓 No Students Found</h2>
+                        <p>Add students to start managing them</p>
+
+                        <GreenButton
+                            variant="contained"
+                            onClick={() => navigate("/Admin/addstudents")}
+                        >
+                            Add Student
+                        </GreenButton>
+                    </Box>
+                ) : (
+                    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+                        <TableTemplate
+                            buttonHaver={StudentButtonHaver}
+                            columns={studentColumns}
+                            rows={studentRows}
+                        />
+                        <SpeedDialTemplate actions={actions} />
+                    </Paper>
+                )}
+            </>
+        )}
+
+        <Popup message={message} setShowPopup={setShowPopup} showPopup={showPopup} />
+    </>
+);
 };
 
 export default ShowStudents;

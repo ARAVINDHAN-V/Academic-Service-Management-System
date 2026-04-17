@@ -1,114 +1,94 @@
-// import React from 'react'
-
-// const TeacherComplain = () => {
-//   return (
-//     <div>TeacherComplain</div>
-//   )
-// }
-
-// export default TeacherComplain
-import React from 'react';
-import styled from 'styled-components';
-import { Card, CardContent, Typography, Divider } from '@mui/material';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import {
+  Box, Typography, TextField, Stack, CircularProgress
+} from '@mui/material';
+import { BlueButton } from '../../components/buttonStyles';
 
 const TeacherComplain = () => {
-  // Dummy complaints (for now, you can replace with real data later)
-  const complaints = [
-    {
-      id: 1,
-      student: "John Doe",
-      subject: "Classroom Discipline",
-      details: "Teacher was strict about assignment deadlines.",
-      date: "2025-09-10"
-    },
-    {
-      id: 2,
-      student: "Jane Smith",
-      subject: "Teaching Style",
-      details: "Felt the lecture pace was too fast.",
-      date: "2025-09-11"
-    }
-  ];
+  const userData = JSON.parse(localStorage.getItem("user"));
+
+  const [complaint, setComplaint] = useState("");
+  const [date, setDate] = useState("");
+  const [loader, setLoader] = useState(false);
+  const [myComplaints, setMyComplaints] = useState([]);
+
+  const submitHandler = (e) => {
+    e.preventDefault();
+    setLoader(true);
+
+    axios.post("http://localhost:5000/ComplainCreate", {
+      user: userData._id,
+      date,
+      complaint,
+      school: userData.school._id
+    })
+      .then(() => {
+        alert("Complaint submitted");
+        setLoader(false);
+        setComplaint("");
+        setDate("");
+        fetchComplaints();
+      })
+      .catch(err => {
+        console.log(err);
+        setLoader(false);
+      });
+  };
+
+  const fetchComplaints = () => {
+    axios.get(`http://localhost:5000/ComplainList/${userData.school._id}`)
+      .then(res => {
+        const mine = res.data.filter(c => c.user._id === userData._id);
+        setMyComplaints(mine);
+      });
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
 
   return (
-    <Wrapper>
-      <PageTitle variant="h4">Student Complaints</PageTitle>
-      <Subtitle variant="body2">
-        Here are the complaints you have received from students.
-      </Subtitle>
+    <Box p={3}>
+      <Typography variant="h4">Teacher Complaint</Typography>
 
-      <ComplaintList>
-        {complaints.map((complain) => (
-          <ComplaintCard key={complain.id}>
-            <CardContent>
-              <Header>
-                <Typography variant="h6">{complain.subject}</Typography>
-                <DateText>{complain.date}</DateText>
-              </Header>
-              <Divider />
-              <Details>{complain.details}</Details>
-              <Footer>Submitted by: {complain.student}</Footer>
-            </CardContent>
-          </ComplaintCard>
-        ))}
-      </ComplaintList>
-    </Wrapper>
+      <form onSubmit={submitHandler}>
+        <Stack spacing={2} mt={2}>
+          <TextField
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+
+          <TextField
+            label="Complaint"
+            value={complaint}
+            onChange={(e) => setComplaint(e.target.value)}
+            multiline
+            rows={3}
+            required
+          />
+
+          <BlueButton type="submit" disabled={loader}>
+            {loader ? <CircularProgress size={24} /> : "Submit"}
+          </BlueButton>
+        </Stack>
+      </form>
+
+      <Typography variant="h5" mt={5}>My Complaints</Typography>
+
+      {myComplaints.map((c) => (
+        <Box key={c._id} sx={{ mt: 2, p: 2, border: "1px solid #ccc" }}>
+          <Typography>{c.complaint}</Typography>
+          <Typography>Status: <b>{c.status}</b></Typography>
+          <Typography>
+            Admin Response: {c.adminResponse || "No response yet"}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
   );
 };
 
 export default TeacherComplain;
-
-// Styled Components
-const Wrapper = styled.div`
-  padding: 40px;
-  background: #f5f6fa;
-  min-height: 100vh;
-`;
-
-const PageTitle = styled(Typography)`
-  font-weight: bold;
-  margin-bottom: 8px;
-`;
-
-const Subtitle = styled(Typography)`
-  color: #555;
-  margin-bottom: 24px;
-`;
-
-const ComplaintList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const ComplaintCard = styled(Card)`
-  border-radius: 16px !important;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease-in-out;
-  &:hover {
-    transform: translateY(-4px);
-  }
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-`;
-
-const DateText = styled(Typography)`
-  font-size: 0.85rem;
-  color: gray;
-`;
-
-const Details = styled(Typography)`
-  margin: 16px 0;
-  color: #333;
-`;
-
-const Footer = styled(Typography)`
-  font-size: 0.9rem;
-  color: #666;
-  font-style: italic;
-`;

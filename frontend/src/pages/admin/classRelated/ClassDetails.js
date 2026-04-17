@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom'
 import { getClassDetails, getClassStudents, getSubjectList } from "../../../redux/sclassRelated/sclassHandle";
-import { deleteUser } from '../../../redux/userRelated/userHandle';
+// import { deleteUser } from '../../../redux/userRelated/userHandle';
+import axios from "axios";
 import {
     Box, Container, Typography, Tab, IconButton
 } from '@mui/material';
@@ -46,18 +47,22 @@ const ClassDetails = () => {
     const [showPopup, setShowPopup] = useState(false);
     const [message, setMessage] = useState("");
 
-    const deleteHandler = (deleteID, address) => {
-        console.log(deleteID);
-        console.log(address);
-        setMessage("Sorry the delete function has been disabled for now.")
-        setShowPopup(true)
-        // dispatch(deleteUser(deleteID, address))
-        //     .then(() => {
-        //         dispatch(getClassStudents(classID));
-        //         dispatch(resetSubjects())
-        //         dispatch(getSubjectList(classID, "ClassSubjects"))
-        //     })
+    const deleteHandler = async (deleteID, address) => {
+    try {
+        await axios.delete(`http://localhost:5000/${address}/${deleteID}`);
+
+        setMessage("✅ Deleted successfully");
+        setShowPopup(true);
+
+        // OPTIONAL: refresh page
+        window.location.reload();
+
+    } catch (error) {
+        console.log(error);
+        setMessage("❌ Delete failed");
+        setShowPopup(true);
     }
+};
 
     const subjectColumns = [
         { id: 'name', label: 'Subject Name', minWidth: 170 },

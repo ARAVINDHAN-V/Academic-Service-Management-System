@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom'
 import { getAllTeachers } from '../../../redux/teacherRelated/teacherHandle';
+import axios from "axios";
 import {
     Paper, Table, TableBody, TableContainer,
     TableHead, TablePagination, Button, Box, IconButton,
 } from '@mui/material';
-import { deleteUser } from '../../../redux/userRelated/userHandle';
+// import { deleteUser } from '../../../redux/userRelated/userHandle';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { StyledTableCell, StyledTableRow } from '../../../components/styles';
 import { BlueButton, GreenButton } from '../../../components/buttonStyles';
@@ -44,16 +45,22 @@ const ShowTeachers = () => {
         console.log(error);
     }
 
-    const deleteHandler = (deleteID, address) => {
-        console.log(deleteID);
-        console.log(address);
-        setMessage("Sorry the delete function has been disabled for now.")
-        setShowPopup(true)
+    const deleteHandler = async (deleteID, address) => {
+    try {
+        await axios.delete(`http://localhost:5000/${address}/${deleteID}`);
 
-        // dispatch(deleteUser(deleteID, address)).then(() => {
-        //     dispatch(getAllTeachers(currentUser._id));
-        // });
-    };
+        setMessage("✅ Deleted successfully");
+        setShowPopup(true);
+
+        // OPTIONAL: refresh page
+        window.location.reload();
+
+    } catch (error) {
+        console.log(error);
+        setMessage("❌ Delete failed");
+        setShowPopup(true);
+    }
+};
 
     const columns = [
         { id: 'name', label: 'Name', minWidth: 170 },
@@ -82,88 +89,114 @@ const ShowTeachers = () => {
         },
     ];
 
-    return (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <TableContainer>
-                <Table stickyHeader aria-label="sticky table">
-                    <TableHead>
-                        <StyledTableRow>
-                            {columns.map((column) => (
-                                <StyledTableCell
-                                    key={column.id}
-                                    align={column.align}
-                                    style={{ minWidth: column.minWidth }}
-                                >
-                                    {column.label}
-                                </StyledTableCell>
-                            ))}
-                            <StyledTableCell align="center">
-                                Actions
-                            </StyledTableCell>
-                        </StyledTableRow>
-                    </TableHead>
-                    <TableBody>
-                        {rows
-                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                            .map((row) => {
-                                return (
-                                    <StyledTableRow hover role="checkbox" tabIndex={-1} key={row.id}>
-                                        {columns.map((column) => {
-                                            const value = row[column.id];
-                                            if (column.id === 'teachSubject') {
-                                                return (
-                                                    <StyledTableCell key={column.id} align={column.align}>
-                                                        {value ? (
-                                                            value
-                                                        ) : (
-                                                            <Button variant="contained"
-                                                                onClick={() => {
-                                                                    navigate(`/Admin/teachers/choosesubject/${row.teachSclassID}/${row.id}`)
-                                                                }}>
-                                                                Add Subject
-                                                            </Button>
-                                                        )}
-                                                    </StyledTableCell>
-                                                );
-                                            }
-                                            return (
-                                                <StyledTableCell key={column.id} align={column.align}>
-                                                    {column.format && typeof value === 'number' ? column.format(value) : value}
-                                                </StyledTableCell>
-                                            );
-                                        })}
-                                        <StyledTableCell align="center">
-                                            <IconButton onClick={() => deleteHandler(row.id, "Teacher")}>
-                                                <PersonRemoveIcon color="error" />
-                                            </IconButton>
-                                            <BlueButton variant="contained"
-                                                onClick={() => navigate("/Admin/teachers/teacher/" + row.id)}>
-                                                View
-                                            </BlueButton>
-                                        </StyledTableCell>
-                                    </StyledTableRow>
-                                );
-                            })}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <TablePagination
-                rowsPerPageOptions={[5, 10, 25, 100]}
-                component="div"
-                count={rows.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(event, newPage) => setPage(newPage)}
-                onRowsPerPageChange={(event) => {
-                    setRowsPerPage(parseInt(event.target.value, 5));
-                    setPage(0);
-                }}
-            />
+ return (
+  <>
+    {loading ? (
+      <div style={{ textAlign: "center", marginTop: "50px" }}>
+        Loading...
+      </div>
 
-            <SpeedDialTemplate actions={actions} />
-            <Popup message={message} setShowPopup={setShowPopup} showPopup={showPopup} />
-        </Paper >
-    );
+    ) : !teachersList || teachersList.length === 0 ? (
+      // ✅ SAFE EMPTY CHECK
+      <Box sx={{ textAlign: "center", mt: 10 }}>
+        <h2>👨‍🏫 No Teachers Available</h2>
+        <p>Add teachers to manage classes</p>
+
+        <GreenButton
+          variant="contained"
+          onClick={() => navigate("/Admin/teachers/chooseclass")}
+        >
+          Add Teacher
+        </GreenButton>
+      </Box>
+
+    ) : (
+      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+        <TableContainer>
+          <Table stickyHeader>
+            <TableHead>
+              <StyledTableRow>
+                {columns.map((column) => (
+                  <StyledTableCell key={column.id}>
+                    {column.label}
+                  </StyledTableCell>
+                ))}
+                <StyledTableCell align="center">
+                  Actions
+                </StyledTableCell>
+              </StyledTableRow>
+            </TableHead>
+
+            <TableBody>
+              {rows
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((row) => (
+                  <StyledTableRow key={row.id} hover>
+                    {columns.map((column) => {
+                      const value = row[column.id];
+
+                      if (column.id === 'teachSubject') {
+                        return (
+                          <StyledTableCell key={column.id}>
+                            {value ? value : (
+                              <Button
+                                variant="contained"
+                                onClick={() =>
+                                  navigate(`/Admin/teachers/choosesubject/${row.teachSclassID}/${row.id}`)
+                                }
+                              >
+                                Add Subject
+                              </Button>
+                            )}
+                          </StyledTableCell>
+                        );
+                      }
+
+                      return (
+                        <StyledTableCell key={column.id}>
+                          {value}
+                        </StyledTableCell>
+                      );
+                    })}
+
+                    <StyledTableCell align="center">
+                      <IconButton onClick={() => deleteHandler(row.id, "Teacher")}>
+                        <PersonRemoveIcon color="error" />
+                      </IconButton>
+
+                      <BlueButton
+                        variant="contained"
+                        onClick={() => navigate("/Admin/teachers/teacher/" + row.id)}
+                      >
+                        View
+                      </BlueButton>
+                    </StyledTableCell>
+                  </StyledTableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={rows.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(e, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+        />
+
+        <SpeedDialTemplate actions={actions} />
+      </Paper>
+    )}
+
+    <Popup message={message} setShowPopup={setShowPopup} showPopup={showPopup} />
+  </>
+);
 };
 
 export default ShowTeachers

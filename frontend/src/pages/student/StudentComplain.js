@@ -1,116 +1,96 @@
 import { useEffect, useState } from 'react';
-import { Box, CircularProgress, Stack, TextField, Typography } from '@mui/material';
-import Popup from '../../components/Popup';
+import axios from 'axios';
+import {
+  Box, CircularProgress, Stack, TextField, Typography
+} from '@mui/material';
 import { BlueButton } from '../../components/buttonStyles';
-import { addStuff } from '../../redux/userRelated/userHandle';
-import { useDispatch, useSelector } from 'react-redux';
 
 const StudentComplain = () => {
-    const [complaint, setComplaint] = useState("");
-    const [date, setDate] = useState("");
+  const userData = JSON.parse(localStorage.getItem("user"));
 
-    const dispatch = useDispatch()
+  const [complaint, setComplaint] = useState("");
+  const [date, setDate] = useState("");
+  const [loader, setLoader] = useState(false);
 
-    const { status, currentUser, error } = useSelector(state => state.user);
+  const [myComplaints, setMyComplaints] = useState([]);
 
-    const user = currentUser._id
-    const school = currentUser.school._id
-    const address = "Complain"
+  const submitHandler = (e) => {
+    e.preventDefault();
+    setLoader(true);
 
-    const [loader, setLoader] = useState(false)
-    const [message, setMessage] = useState("");
-    const [showPopup, setShowPopup] = useState(false);
+    axios.post("http://localhost:5000/ComplainCreate", {
+      user: userData._id,
+      date,
+      complaint,
+      school: userData.school._id
+    })
+      .then(() => {
+        alert("Complaint submitted");
+        setComplaint("");
+        setDate("");
+        setLoader(false);
+        fetchComplaints();
+      })
+      .catch(err => {
+        console.log(err);
+        setLoader(false);
+      });
+  };
 
-    const fields = {
-        user,
-        date,
-        complaint,
-        school,
-    };
+  const fetchComplaints = () => {
+    axios.get(`http://localhost:5000/ComplainList/${userData.school._id}`)
+      .then(res => {
+        const mine = res.data.filter(c => c.user._id === userData._id);
+        setMyComplaints(mine);
+      });
+  };
 
-    const submitHandler = (event) => {
-        event.preventDefault()
-        setLoader(true)
-        dispatch(addStuff(fields, address))
-    };
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
 
-    useEffect(() => {
-        if (status === "added") {
-            setLoader(false)
-            setShowPopup(true)
-            setMessage("Done Successfully")
-        }
-        else if (error) {
-            setLoader(false)
-            setShowPopup(true)
-            setMessage("Network Error")
-        }
-    }, [status, error])
+  return (
+    <Box p={3}>
+      <Typography variant="h4" mb={2}>Submit Complaint</Typography>
 
-    return (
-        <>
-            <Box
-                sx={{
-                    flex: '1 1 auto',
-                    alignItems: 'center',
-                    display: 'flex',
-                    justifyContent: 'center'
-                }}
-            >
-                <Box
-                    sx={{
-                        maxWidth: 550,
-                        px: 3,
-                        py: '100px',
-                        width: '100%'
-                    }}
-                >
-                    <div>
-                        <Stack spacing={1} sx={{ mb: 3 }}>
-                            <Typography variant="h4">Complain</Typography>
-                        </Stack>
-                        <form onSubmit={submitHandler}>
-                            <Stack spacing={3}>
-                                <TextField
-                                    fullWidth
-                                    label="Select Date"
-                                    type="date"
-                                    value={date}
-                                    onChange={(event) => setDate(event.target.value)} required
-                                    InputLabelProps={{
-                                        shrink: true,
-                                    }}
-                                />
-                                <TextField
-                                    fullWidth
-                                    label="Write your complain"
-                                    variant="outlined"
-                                    value={complaint}
-                                    onChange={(event) => {
-                                        setComplaint(event.target.value);
-                                    }}
-                                    required
-                                    multiline
-                                    maxRows={4}
-                                />
-                            </Stack>
-                            <BlueButton
-                                fullWidth
-                                size="large"
-                                sx={{ mt: 3 }}
-                                variant="contained"
-                                type="submit"
-                                disabled={loader}
-                            >
-                                {loader ? <CircularProgress size={24} color="inherit" /> : "Add"}
-                            </BlueButton>
-                        </form>
-                    </div>
-                </Box>
-            </Box>
-            <Popup message={message} setShowPopup={setShowPopup} showPopup={showPopup} />
-        </>
-    );
+      <form onSubmit={submitHandler}>
+        <Stack spacing={2}>
+          <TextField
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+
+          <TextField
+            label="Complaint"
+            value={complaint}
+            onChange={(e) => setComplaint(e.target.value)}
+            required
+            multiline
+            rows={3}
+          />
+
+          <BlueButton type="submit" disabled={loader}>
+            {loader ? <CircularProgress size={24} /> : "Submit"}
+          </BlueButton>
+        </Stack>
+      </form>
+
+      {/* SHOW STATUS */}
+      <Typography variant="h5" mt={5}>My Complaints</Typography>
+
+      {myComplaints.map((c) => (
+        <Box key={c._id} sx={{ mt: 2, p: 2, border: "1px solid #ccc" }}>
+          <Typography>{c.complaint}</Typography>
+          <Typography>Status: <b>{c.status}</b></Typography>
+          <Typography>
+            Admin Response: {c.adminResponse || "No response yet"}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
+  );
 };
 
 export default StudentComplain;

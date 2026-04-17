@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express")
 const cors = require("cors")
 const mongoose = require("mongoose")
@@ -8,7 +10,7 @@ const Routes = require("./routes/route.js")
 
 const PORT = process.env.PORT || 5000
 
-dotenv.config();
+// dotenv.config();
 
 // app.use(bodyParser.json({ limit: '10mb', extended: true }))
 // app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }))

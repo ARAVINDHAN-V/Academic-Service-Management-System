@@ -1,70 +1,105 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
-  Paper, Box, Checkbox
+  Paper, Box, Typography, MenuItem, Select,
+  TextField, Button, CircularProgress
 } from '@mui/material';
-import { getAllComplains } from '../../../redux/complainRelated/complainHandle';
-import TableTemplate from '../../../components/TableTemplate';
 
 const SeeComplains = () => {
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const label = { inputProps: { 'aria-label': 'Checkbox demo' } };  const dispatch = useDispatch();
-  const { complainsList, loading, error, response } = useSelector((state) => state.complain);
-  const { currentUser } = useSelector(state => state.user)
+  const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
-    dispatch(getAllComplains(currentUser._id, "Complain"));
-  }, [currentUser._id, dispatch]);
+    axios.get(`http://localhost:5000/ComplainList/${user._id}`)
+      .then(res => {
+        setComplaints(res.data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.log(err);
+        setLoading(false);
+      });
+  }, []);
 
-  if (error) {
-    console.log(error);
-  }
-
-  const complainColumns = [
-    { id: 'user', label: 'User', minWidth: 170 },
-    { id: 'complaint', label: 'Complaint', minWidth: 100 },
-    { id: 'date', label: 'Date', minWidth: 170 },
-  ];
-
-  const complainRows = complainsList && complainsList.length > 0 && complainsList.map((complain) => {
-    const date = new Date(complain.date);
-    const dateString = date.toString() !== "Invalid Date" ? date.toISOString().substring(0, 10) : "Invalid Date";
-    return {
-      user: complain.user.name,
-      complaint: complain.complaint,
-      date: dateString,
-      id: complain._id,
-    };
-  });
-
-  const ComplainButtonHaver = ({ row }) => {
-    return (
-      <>
-        <Checkbox {...label} />
-      </>
-    );
+  const handleUpdate = (id, status, response) => {
+    axios.put(`http://localhost:5000/Complain/${id}`, {
+      status,
+      adminResponse: response
+    })
+      .then(() => {
+        alert("Updated successfully");
+        window.location.reload();
+      })
+      .catch(err => console.log(err));
   };
 
+  if (loading) {
+    return (
+      <Box textAlign="center" mt={10}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!complaints || complaints.length === 0) {
+    return (
+      <Box textAlign="center" mt={10}>
+        <h2>📭 No Complaints Available</h2>
+        <p>All good! No issues reported.</p>
+      </Box>
+    );
+  }
+
   return (
-    <>
-      {loading ?
-        <div>Loading...</div>
-        :
-        <>
-          {response ?
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-              No Complains Right Now
-            </Box>
-            :
-            <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-              {Array.isArray(complainsList) && complainsList.length > 0 &&
-                <TableTemplate buttonHaver={ComplainButtonHaver} columns={complainColumns} rows={complainRows} />
-              }
-            </Paper>
-          }
-        </>
-      }
-    </>
+    <Box p={3}>
+      <Typography variant="h4" mb={3}>All Complaints</Typography>
+
+      {complaints.map((c) => {
+        let selectedStatus = c.status;
+        let responseText = c.adminResponse || "";
+
+        return (
+          <Paper key={c._id} sx={{ p: 3, mb: 2 }}>
+            <Typography><b>User:</b> {c.user?.name}</Typography>
+            <Typography><b>Date:</b> {new Date(c.date).toISOString().substring(0, 10)}</Typography>
+            <Typography><b>Complaint:</b> {c.complaint}</Typography>
+            <Typography><b>Status:</b> {c.status}</Typography>
+
+            {/* STATUS SELECT */}
+            <Select
+              fullWidth
+              defaultValue={c.status}
+              sx={{ mt: 2 }}
+              onChange={(e) => selectedStatus = e.target.value}
+            >
+              <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="In Progress">In Progress</MenuItem>
+              <MenuItem value="Resolved">Resolved</MenuItem>
+              <MenuItem value="Rejected">Rejected</MenuItem>
+            </Select>
+
+            {/* ADMIN RESPONSE */}
+            <TextField
+              fullWidth
+              placeholder="Write response..."
+              sx={{ mt: 2 }}
+              defaultValue={c.adminResponse}
+              onChange={(e) => responseText = e.target.value}
+            />
+
+            <Button
+              variant="contained"
+              sx={{ mt: 2 }}
+              onClick={() => handleUpdate(c._id, selectedStatus, responseText)}
+            >
+              Update
+            </Button>
+          </Paper>
+        );
+      })}
+    </Box>
   );
 };
 

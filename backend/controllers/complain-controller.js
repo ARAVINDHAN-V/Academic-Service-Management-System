@@ -22,5 +22,24 @@ const complainList = async (req, res) => {
         res.status(500).json(err);
     }
 };
+const updateComplainStatus = async (req, res) => {
+    try {
+        const { status, adminResponse } = req.body;
 
-module.exports = { complainCreate, complainList };
+        const updated = await Complain.findByIdAndUpdate(
+            req.params.id,
+            { status, adminResponse },
+            { new: true }
+        );
+
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json(err);
+    }
+};
+
+module.exports = {
+    complainCreate,
+    complainList,
+    updateComplainStatus
+};

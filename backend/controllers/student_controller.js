@@ -6,6 +6,7 @@ const Sclass = require("../models/sclassSchema.js");
 const fs = require("fs");
 
 
+
 const bulkUploadStudents = async (req, res) => {
   try {
     if (!req.file) {
@@ -235,32 +236,52 @@ const updateStudent = async (req, res) => {
 }
 
 const updateExamResult = async (req, res) => {
-    const { subName, marksObtained } = req.body;
+    const { subName, marksObtained, suggestion } = req.body;
 
     try {
         const student = await Student.findById(req.params.id);
 
         if (!student) {
-            return res.send({ message: 'Student not found' });
+            return res.send({ message: "Student not found" });
         }
 
         const existingResult = student.examResult.find(
-            (result) => result.subName.toString() === subName
+            (r) => r.subName.toString() === subName
         );
 
         if (existingResult) {
             existingResult.marksObtained = marksObtained;
+
+            if (suggestion) {
+                existingResult.suggestion = {
+                    performance: suggestion.performance || "",
+                    advice: suggestion.advice || "",
+                    attendanceMsg: suggestion.attendanceMsg || ""
+                };
+            }
         } else {
-            student.examResult.push({ subName, marksObtained });
+            student.examResult.push({
+                subName,
+                marksObtained,
+                suggestion: {
+                    performance: suggestion?.performance || "",
+                    advice: suggestion?.advice || "",
+                    attendanceMsg: suggestion?.attendanceMsg || ""
+                }
+            });
         }
+        // ✅ ADD NOTIFICATION
+        student.notifications.push({
+        message: `New marks added for subject. Score: ${marksObtained}`,
+    });
 
         const result = await student.save();
-        return res.send(result);
+        res.send(result);
+
     } catch (error) {
         res.status(500).json(error);
     }
 };
-
 const studentAttendance = async (req, res) => {
     const { subName, status, date } = req.body;
 

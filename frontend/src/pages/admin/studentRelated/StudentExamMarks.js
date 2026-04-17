@@ -1,3 +1,4 @@
+import axios from "axios";
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
@@ -21,6 +22,10 @@ const StudentExamMarks = ({ situation }) => {
     const { response, error, statestatus } = useSelector((state) => state.student);
     const params = useParams()
 
+    // ✅ AI states
+    const [suggestion, setSuggestion] = useState(null);
+    const [attendance, setAttendance] = useState("");
+
     const [studentID, setStudentID] = useState("");
     const [subjectName, setSubjectName] = useState("");
     const [chosenSubName, setChosenSubName] = useState("");
@@ -30,11 +35,16 @@ const StudentExamMarks = ({ situation }) => {
     const [message, setMessage] = useState("");
     const [loader, setLoader] = useState(false)
 
+    const fields = {
+        subName: chosenSubName,
+        marksObtained,
+        suggestion   // ✅ send AI result
+    };
+
     useEffect(() => {
         if (situation === "Student") {
             setStudentID(params.id);
-            const stdID = params.id
-            dispatch(getUserDetails(stdID, "Student"));
+            dispatch(getUserDetails(params.id, "Student"));
         }
         else if (situation === "Subject") {
             const { studentID, subjectID } = params
@@ -58,13 +68,27 @@ const StudentExamMarks = ({ situation }) => {
         setChosenSubName(selectedSubject._id);
     }
 
-    const fields = { subName: chosenSubName, marksObtained }
-
     const submitHandler = (event) => {
         event.preventDefault()
         setLoader(true)
         dispatch(updateStudentFields(studentID, fields, "UpdateExamResult"))
     }
+
+    // ✅ AI Suggestion Function
+    const getSuggestion = async () => {
+        try {
+            const res = await axios.post("http://localhost:5000/grade", {
+                marks: Number(marksObtained),
+                attendance: Number(attendance || 100),
+                subject: subjectName ,  // ✅ pass subject also
+             });
+            console.log("AI RESPONSE:", res.data);
+
+            setSuggestion(res.data.suggestion);
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
     useEffect(() => {
         if (response) {
@@ -82,21 +106,20 @@ const StudentExamMarks = ({ situation }) => {
             setShowPopup(true)
             setMessage("Done Successfully")
         }
+        if (studentID) {
+        dispatch(getUserDetails(studentID, "Student"));
+    }
     }, [response, statestatus, error])
 
     return (
         <>
             {loading
                 ?
-                <>
-                    <div>Loading...</div>
-                </>
+                <div>Loading...</div>
                 :
                 <>
                     <Box
                         sx={{
-                            flex: '1 1 auto',
-                            alignItems: 'center',
                             display: 'flex',
                             justifyContent: 'center'
                         }}
@@ -113,26 +136,24 @@ const StudentExamMarks = ({ situation }) => {
                                 <Typography variant="h4">
                                     Student Name: {userDetails.name}
                                 </Typography>
+
                                 {currentUser.teachSubject &&
-                                    <Typography variant="h4">
-                                        Subject Name: {currentUser.teachSubject?.subName}
+                                    <Typography variant="h6">
+                                        Subject: {currentUser.teachSubject?.subName}
                                     </Typography>
                                 }
                             </Stack>
+
                             <form onSubmit={submitHandler}>
                                 <Stack spacing={3}>
-                                    {
-                                        situation === "Student" &&
+
+                                    {situation === "Student" &&
                                         <FormControl fullWidth>
-                                            <InputLabel id="demo-simple-select-label">
-                                                Select Subject
-                                            </InputLabel>
+                                            <InputLabel>Select Subject</InputLabel>
                                             <Select
-                                                labelId="demo-simple-select-label"
-                                                id="demo-simple-select"
                                                 value={subjectName}
-                                                label="Choose an option"
-                                                onChange={changeHandler} required
+                                                onChange={changeHandler}
+                                                required
                                             >
                                                 {subjectsList ?
                                                     subjectsList.map((subject, index) => (
@@ -141,36 +162,79 @@ const StudentExamMarks = ({ situation }) => {
                                                         </MenuItem>
                                                     ))
                                                     :
-                                                    <MenuItem value="Select Subject">
-                                                        Add Subjects For Marks
+                                                    <MenuItem>
+                                                        Add Subjects First
                                                     </MenuItem>
                                                 }
                                             </Select>
                                         </FormControl>
                                     }
-                                    <FormControl>
-                                        <TextField type="number" label='Enter marks'
-                                            value={marksObtained} required
-                                            onChange={(e) => setMarksObtained(e.target.value)}
-                                            InputLabelProps={{
-                                                shrink: true,
-                                            }}
-                                        />
-                                    </FormControl>
+
+                                    {/* Marks */}
+                                    <TextField
+                                        type="number"
+                                        label='Enter Marks'
+                                        value={marksObtained}
+                                        required
+                                        onChange={(e) => setMarksObtained(e.target.value)}
+                                    />
+
+                                    {/* Attendance (for AI) */}
+                                    <TextField
+                                        type="number"
+                                        label='Attendance % (optional)'
+                                        value={attendance}
+                                        onChange={(e) => setAttendance(e.target.value)}
+                                    />
+
+                                    {/* AI Button */}
+                                    <BlueButton onClick={getSuggestion}>
+                                        Get AI Suggestion
+                                    </BlueButton>
+
+                                    {/* AI Result */}
+                                    {suggestion && (
+  <Box
+    sx={{
+      mt: 2,
+      p: 2,
+      borderRadius: 2,
+      backgroundColor: "#eef6ff",
+      border: "1px solid #1976d2"
+    }}
+  >
+    <Typography variant="h6">🤖 AI Feedback</Typography>
+
+    <Typography>
+      <strong>Performance:</strong> {suggestion.performance}
+    </Typography>
+
+    <Typography>
+      <strong>Advice:</strong> {suggestion.advice}
+    </Typography>
+
+    <Typography>
+      <strong>Attendance:</strong> {suggestion.attendanceMsg}
+    </Typography>
+  </Box>
+)}
                                 </Stack>
+
                                 <BlueButton
                                     fullWidth
                                     size="large"
                                     sx={{ mt: 3 }}
-                                    variant="contained"
                                     type="submit"
-                                    disabled={loader}
+                                    disabled={loader || !suggestion}
                                 >
-                                    {loader ? <CircularProgress size={24} color="inherit" /> : "Submit"}
+                                    {loader
+                                        ? <CircularProgress size={24} color="inherit" />
+                                        : "Submit"}
                                 </BlueButton>
                             </form>
                         </Box>
                     </Box>
+
                     <Popup message={message} setShowPopup={setShowPopup} showPopup={showPopup} />
                 </>
             }
@@ -178,4 +242,4 @@ const StudentExamMarks = ({ situation }) => {
     )
 }
 
-export default StudentExamMarks
+export default StudentExamMarks;
